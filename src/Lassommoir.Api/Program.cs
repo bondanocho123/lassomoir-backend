@@ -5,6 +5,8 @@
 //   Endpoint infrastruktur (/openapi, /health) berada di luar prefix.
 // - Dokumentasi kontrak: dokumen OpenAPI di /openapi/v1.json (hanya di Development).
 // - CORS: policy "Pwa", origin dibaca dari Cors:AllowedOrigins. Kosong = tidak ada origin diizinkan.
+using Lassommoir.Infrastructure;
+
 const string PwaCorsPolicy = "Pwa";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +24,7 @@ builder.Services.AddOpenApi("v1", options =>
     });
 });
 builder.Services.AddProblemDetails();
+builder.Services.AddPersistence(builder.Configuration);
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var allowCredentials = builder.Configuration.GetValue<bool>("Cors:AllowCredentials");
