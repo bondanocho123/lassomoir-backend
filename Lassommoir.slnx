@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lassommoir.Api/Lassommoir.Api.csproj" />
+    <Project Path="src/Lassommoir.Application/Lassommoir.Application.csproj" />
+    <Project Path="src/Lassommoir.Domain/Lassommoir.Domain.csproj" />
+    <Project Path="src/Lassommoir.Infrastructure/Lassommoir.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lassommoir.Tests/Lassommoir.Tests.csproj" />
+  </Folder>
+</Solution>
