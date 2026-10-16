@@ -12,7 +12,11 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("ConnectionStrings:Default belum dikonfigurasi.");
 
-        services.AddDbContext<LassommoirDbContext>(options => options.UseSqlite(connectionString));
+        var busyTimeoutMs = configuration.GetValue("Database:BusyTimeoutMs", 5000);
+
+        services.AddDbContext<LassommoirDbContext>(options => options
+            .UseSqlite(connectionString)
+            .AddInterceptors(new SqlitePragmaInterceptor(busyTimeoutMs)));
 
         return services;
     }
