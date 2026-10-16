@@ -104,7 +104,7 @@ public class ConventionTests : IDisposable
 
         var result = query.Select(i => i.At).ToList();
         Assert.Equal(
-            new[] { 3, 4, 5 }.Select(o => baseTime.AddDays(o).AddTicks(o)),
+            new[] { 2, 3, 4, 5 }.Select(o => baseTime.AddDays(o).AddTicks(o)),
             result);
     }
 
