@@ -6,8 +6,11 @@
 // - Dokumentasi kontrak: dokumen OpenAPI di /openapi/v1.json (hanya di Development).
 // - CORS: policy "Pwa", origin dibaca dari Cors:AllowedOrigins. Kosong = tidak ada origin diizinkan.
 using Lassommoir.Infrastructure;
+using Lassommoir.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 const string PwaCorsPolicy = "Pwa";
+const string MigrateOnStartupKey = "Database:MigrateOnStartup";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,6 +88,20 @@ api.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast")
 .WithSummary("Ramalan cuaca contoh")
 .WithTags("Weather");
+
+var migrateOnStartup = app.Configuration.GetValue(MigrateOnStartupKey, app.Environment.IsDevelopment());
+if (migrateOnStartup)
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<LassommoirDbContext>().Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Migrasi database gagal saat startup.");
+    }
+}
 
 app.Run();
 
