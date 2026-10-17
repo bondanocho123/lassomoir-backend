@@ -2,7 +2,6 @@ using Lassommoir.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace Lassommoir.Infrastructure;
 
 public static class DependencyInjection
