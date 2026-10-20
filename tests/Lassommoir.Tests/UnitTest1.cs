@@ -84,17 +84,18 @@ public class ApiConventionsTests
     }
 
     [Fact]
-    public async Task VersionedEndpoint_Returns200_AndOldPathReturns404()
+    public async Task VersionedEndpoint_RequiresAuth_AndUnversionedPathReturns404()
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
 
-        var ok = await client.GetAsync("/api/v1/weatherforecast");
-        var old = await client.GetAsync("/weatherforecast");
+        var versioned = await client.GetAsync("/api/v1/projects");
+        var unversioned = await client.GetAsync("/projects");
 
-        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, old.StatusCode);
-        Assert.Equal("application/problem+json", old.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.Unauthorized, versioned.StatusCode);
+        Assert.Equal("application/problem+json", versioned.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.NotFound, unversioned.StatusCode);
+        Assert.Equal("application/problem+json", unversioned.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public class ApiConventionsTests
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/v1/weatherforecast");
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/v1/projects");
         request.Headers.Add("Origin", PwaOrigin);
         request.Headers.Add("Access-Control-Request-Method", "GET");
         request.Headers.Add("Access-Control-Request-Headers", "authorization");
@@ -119,7 +120,7 @@ public class ApiConventionsTests
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weatherforecast");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/projects");
         request.Headers.Add("Origin", "http://evil.example");
 
         var response = await client.SendAsync(request);

@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Lassommoir.Application\Lassommoir.Application.csproj" />
     <ProjectReference Include="..\Lassommoir.Infrastructure\Lassommoir.Infrastructure.csproj" />
   </ItemGroup>
 
