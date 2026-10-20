@@ -1,6 +1,125 @@
 @Lassommoir.Api_HostAddress = http://localhost:5294
 
-GET {{Lassommoir.Api_HostAddress}}/api/v1/weatherforecast/
-Accept: application/json
+# Alur uji manual: pairing -> snapshot desktop -> baca dari mobile -> command Approve ->
+# desktop mengambil -> desktop melaporkan Rejected -> mobile melihat alasannya.
+# Jalankan server dengan admin token, mis. PowerShell: $env:Auth__AdminToken = "dev-admin-token"; dotnet run
+@adminToken = dev-admin-token
+
+### 1. Admin mendaftarkan desktop (token device hanya tampil sekali)
+# @name pairDevice
+POST {{Lassommoir.Api_HostAddress}}/api/v1/devices
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "name": "PC kerja" }
 
 ###
+@desktopToken = {{pairDevice.response.body.$.token}}
+
+### 2. Desktop memasangkan mobile (token mobile hanya tampil sekali)
+# @name pairMobile
+POST {{Lassommoir.Api_HostAddress}}/api/v1/devices/me/mobile-clients
+Authorization: Bearer {{desktopToken}}
+Content-Type: application/json
+
+{ "name": "HP" }
+
+###
+@mobileToken = {{pairMobile.response.body.$.token}}
+
+### 3. Desktop mengirim snapshot: isi session.json satu project, ditambah runState dari bridge
+# @name snapshot
+PUT {{Lassommoir.Api_HostAddress}}/api/v1/devices/me/snapshot
+Authorization: Bearer {{desktopToken}}
+Content-Type: application/json
+
+{
+  "projects": [
+    {
+      "schemaVersion": 1,
+      "projectId": "spacewar",
+      "workingDirectory": "E:/Projects/spacewar",
+      "tasks": [
+        {
+          "id": "1791808370495",
+          "projectId": "spacewar",
+          "stage": "SPECIFIER",
+          "category": "utility",
+          "title": "Migrasi awal EF Core",
+          "subtext": "Buat migrasi awal dan terapkan saat startup.",
+          "attachments": ["skema.png"],
+          "state": "review",
+          "runState": "idle",
+          "runs": [
+            {
+              "stage": "SPECIFIER",
+              "finishedAt": "2026-10-16T09:00:00Z",
+              "success": true,
+              "outcome": "success",
+              "message": "# Spesifikasi\n\n1. Tambah migrasi InitialCreate.",
+              "sessionId": "b1c9e7d2",
+              "durationMs": 154000,
+              "totalTokens": 47300,
+              "costUsd": 0.42,
+              "deniedTools": [],
+              "decision": "",
+              "reviewNote": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+###
+@projectId = {{snapshot.response.body.$.projects[0].id}}
+@taskId = {{snapshot.response.body.$.projects[0].tasks[0].id}}
+
+### 4. Mobile membaca board
+GET {{Lassommoir.Api_HostAddress}}/api/v1/projects
+Authorization: Bearer {{mobileToken}}
+
+###
+GET {{Lassommoir.Api_HostAddress}}/api/v1/projects/{{projectId}}/tasks
+Authorization: Bearer {{mobileToken}}
+
+###
+GET {{Lassommoir.Api_HostAddress}}/api/v1/tasks/{{taskId}}
+Authorization: Bearer {{mobileToken}}
+
+### 5. Mobile mengirim Approve
+# @name approve
+POST {{Lassommoir.Api_HostAddress}}/api/v1/tasks/{{taskId}}/commands
+Authorization: Bearer {{mobileToken}}
+Content-Type: application/json
+
+{ "type": "Approve", "note": "Lanjut ke CODER" }
+
+###
+@commandId = {{approve.response.body.$.id}}
+
+### 6. Desktop mengambil command (Pending -> Delivered)
+GET {{Lassommoir.Api_HostAddress}}/api/v1/devices/me/commands?state=Pending
+Authorization: Bearer {{desktopToken}}
+
+### 7. Desktop melaporkan TaskManager menolak
+POST {{Lassommoir.Api_HostAddress}}/api/v1/commands/{{commandId}}/result
+Authorization: Bearer {{desktopToken}}
+Content-Type: application/json
+
+{ "state": "Rejected", "reason": "Task tidak sedang menunggu review" }
+
+### 8. Mobile melihat alasannya
+GET {{Lassommoir.Api_HostAddress}}/api/v1/commands/{{commandId}}
+Authorization: Bearer {{mobileToken}}
+
+### Desktop menambah event audit
+POST {{Lassommoir.Api_HostAddress}}/api/v1/tasks/{{taskId}}/events
+Authorization: Bearer {{desktopToken}}
+Content-Type: application/json
+
+{ "type": "run_started", "payload": { "stage": "CODER" } }
+
+### Tanpa token -> 401
+GET {{Lassommoir.Api_HostAddress}}/api/v1/projects

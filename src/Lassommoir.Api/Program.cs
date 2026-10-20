@@ -3,10 +3,17 @@
 //   Untuk error validasi gunakan Results.ValidationProblem(...) (status 400, field "errors").
 // - Versioning: URL path. Semua endpoint bisnis didaftarkan lewat group `api` (/api/v1).
 //   Endpoint infrastruktur (/openapi, /health) berada di luar prefix.
+// - Auth: semua endpoint /api/v1 wajib "Authorization: Bearer <token>" (TokenAuthenticationHandler).
+//   Token device untuk desktop, token mobile untuk PWA, Auth:AdminToken hanya untuk pairing device.
+// - Enum dikirim dan diterima sebagai string (mis. "AwaitingReview").
 // - Dokumentasi kontrak: dokumen OpenAPI di /openapi/v1.json (hanya di Development).
 // - CORS: policy "Pwa", origin dibaca dari Cors:AllowedOrigins. Kosong = tidak ada origin diizinkan.
+using System.Text.Json.Serialization;
+using Lassommoir.Api.Auth;
+using Lassommoir.Api.Endpoints;
 using Lassommoir.Infrastructure;
 using Lassommoir.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 const string PwaCorsPolicy = "Pwa";
@@ -27,7 +34,16 @@ builder.Services.AddOpenApi("v1", options =>
     });
 });
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddPersistence(builder.Configuration);
+
+builder.Services.AddAuthentication(TokenAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, TokenAuthenticationHandler>(TokenAuthenticationHandler.SchemeName, _ => { });
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthRoles.Admin, policy => policy.RequireRole(AuthRoles.Admin))
+    .AddPolicy(AuthRoles.Desktop, policy => policy.RequireRole(AuthRoles.Desktop))
+    .AddPolicy(AuthRoles.Mobile, policy => policy.RequireRole(AuthRoles.Mobile));
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var allowCredentials = builder.Configuration.GetValue<bool>("Cors:AllowCredentials");
@@ -65,29 +81,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(PwaCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
 
-var api = app.MapGroup("/api/v1");
+var api = app.MapGroup("/api/v1").RequireAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-api.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithSummary("Ramalan cuaca contoh")
-.WithTags("Weather");
+api.MapPairingEndpoints();
+api.MapDesktopEndpoints();
+api.MapMobileEndpoints();
 
 var migrateOnStartup = app.Configuration.GetValue(MigrateOnStartupKey, app.Environment.IsDevelopment());
 if (migrateOnStartup)
@@ -104,10 +105,5 @@ if (migrateOnStartup)
 }
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
 
 public partial class Program;

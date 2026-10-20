@@ -22,6 +22,9 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CompletedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CreatedAt")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -33,21 +36,32 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
                     b.Property<string>("Payload")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProjectId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TaskId")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasMaxLength(100)
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("TaskId");
 
@@ -74,38 +88,156 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PairedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
 
                     b.ToTable("Devices", (string)null);
                 });
 
-            modelBuilder.Entity("Lassommoir.Domain.Review", b =>
+            modelBuilder.Entity("Lassommoir.Domain.MobileClient", b =>
                 {
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Comment")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CreatedAt")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("TaskId")
+                    b.Property<string>("DeviceId")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Verdict")
+                    b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(32)
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TaskId");
+                    b.HasIndex("DeviceId");
 
-                    b.ToTable("Reviews", (string)null);
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("MobileClients", (string)null);
+                });
+
+            modelBuilder.Entity("Lassommoir.Domain.Project", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LocalId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId", "LocalId")
+                        .IsUnique();
+
+                    b.ToTable("Projects", (string)null);
+                });
+
+            modelBuilder.Entity("Lassommoir.Domain.StageRun", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("CostUsd")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Decision")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("DeniedTools")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FinishedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewNote")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TaskId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("TotalTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("StageRuns", (string)null);
                 });
 
             modelBuilder.Entity("Lassommoir.Domain.TaskEvent", b =>
@@ -143,17 +275,45 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.PrimitiveCollection<string>("Attachments")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CreatedAt")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DeviceId")
+                    b.Property<string>("LocalId")
                         .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProjectId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RunState")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subtext")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -167,7 +327,8 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceId", "State");
+                    b.HasIndex("ProjectId", "LocalId")
+                        .IsUnique();
 
                     b.ToTable("Tasks", (string)null);
                 });
@@ -180,14 +341,37 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Lassommoir.Domain.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Lassommoir.Domain.TaskItem", null)
                         .WithMany()
                         .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Lassommoir.Domain.MobileClient", b =>
+                {
+                    b.HasOne("Lassommoir.Domain.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Lassommoir.Domain.Review", b =>
+            modelBuilder.Entity("Lassommoir.Domain.Project", b =>
+                {
+                    b.HasOne("Lassommoir.Domain.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lassommoir.Domain.StageRun", b =>
                 {
                     b.HasOne("Lassommoir.Domain.TaskItem", null)
                         .WithMany()
@@ -207,9 +391,9 @@ namespace Lassommoir.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Lassommoir.Domain.TaskItem", b =>
                 {
-                    b.HasOne("Lassommoir.Domain.Device", null)
+                    b.HasOne("Lassommoir.Domain.Project", null)
                         .WithMany()
-                        .HasForeignKey("DeviceId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

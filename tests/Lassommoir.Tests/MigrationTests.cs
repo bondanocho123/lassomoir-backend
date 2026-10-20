@@ -11,7 +11,7 @@ namespace Lassommoir.Tests;
 
 public class MigrationTests : IDisposable
 {
-    private static readonly string[] Tables = ["Devices", "Tasks", "TaskEvents", "Commands", "Reviews"];
+    private static readonly string[] Tables = ["Devices", "MobileClients", "Projects", "Tasks", "StageRuns", "TaskEvents", "Commands"];
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"lassommoir-{Guid.NewGuid():N}.db");
 
@@ -61,6 +61,7 @@ public class MigrationTests : IDisposable
         var tables = GetObjectNames(context, "table");
         foreach (var table in Tables)
             Assert.Contains(table, tables);
+        Assert.DoesNotContain("Reviews", tables);
 
         var triggers = GetObjectNames(context, "trigger");
         Assert.Contains("TaskEvents_no_update", triggers);
@@ -100,8 +101,11 @@ public class MigrationTests : IDisposable
     private static LassommoirDbContext SeedTaskEvent(IServiceScope scope)
     {
         var context = scope.ServiceProvider.GetRequiredService<LassommoirDbContext>();
-        context.Database.ExecuteSqlRaw("INSERT INTO Devices (Id, Name, CreatedAt) VALUES ('d1', 'dev', 't')");
-        context.Database.ExecuteSqlRaw("INSERT INTO Tasks (Id, DeviceId, Title, State, CreatedAt, UpdatedAt) VALUES ('t1', 'd1', 'x', 'Pending', 't', 't')");
+        context.Database.ExecuteSqlRaw("INSERT INTO Devices (Id, Name, TokenHash, CreatedAt) VALUES ('d1', 'dev', 'h1', 't')");
+        context.Database.ExecuteSqlRaw("INSERT INTO Projects (Id, DeviceId, LocalId, Title) VALUES ('p1', 'd1', 'spacewar', 'spacewar')");
+        context.Database.ExecuteSqlRaw(
+            "INSERT INTO Tasks (Id, ProjectId, LocalId, Stage, Category, Title, Subtext, Attachments, State, RunState, CreatedAt, UpdatedAt) " +
+            "VALUES ('t1', 'p1', '1791808370495', 'WAITING', '', 'x', '', '[]', 'Idle', 'Idle', 't', 't')");
         context.Database.ExecuteSqlRaw("INSERT INTO TaskEvents (Id, TaskId, Type, CreatedAt) VALUES ('e1', 't1', 'created', 't')");
         return context;
     }
@@ -131,6 +135,38 @@ public class MigrationTests : IDisposable
     }
 
     [Fact]
+    public void ProjectLocalId_IsUniquePerDevice()
+    {
+        using var factory = CreateFactory("Production", true);
+        using var scope = factory.Services.CreateScope();
+        var context = SeedTaskEvent(scope);
+        context.Database.ExecuteSqlRaw("INSERT INTO Devices (Id, Name, TokenHash, CreatedAt) VALUES ('d2', 'dev2', 'h2', 't')");
+
+        var ex = Assert.ThrowsAny<Exception>(() => context.Database.ExecuteSqlRaw(
+            "INSERT INTO Projects (Id, DeviceId, LocalId, Title) VALUES ('p2', 'd1', 'spacewar', 'lagi')"));
+        Assert.Contains("UNIQUE", ex.ToString());
+
+        context.Database.ExecuteSqlRaw("INSERT INTO Projects (Id, DeviceId, LocalId, Title) VALUES ('p3', 'd2', 'spacewar', 'spacewar')");
+    }
+
+    [Fact]
+    public void TaskLocalId_IsUniquePerProject()
+    {
+        using var factory = CreateFactory("Production", true);
+        using var scope = factory.Services.CreateScope();
+        var context = SeedTaskEvent(scope);
+        context.Database.ExecuteSqlRaw("INSERT INTO Projects (Id, DeviceId, LocalId, Title) VALUES ('p2', 'd1', 'TTT', 'TTT')");
+        const string insertTask =
+            "INSERT INTO Tasks (Id, ProjectId, LocalId, Stage, Category, Title, Subtext, Attachments, State, RunState, CreatedAt, UpdatedAt) " +
+            "VALUES ({0}, {1}, '1791808370495', 'WAITING', '', 'x', '', '[]', 'Idle', 'Idle', 't', 't')";
+
+        var ex = Assert.ThrowsAny<Exception>(() => context.Database.ExecuteSqlRaw(insertTask, "t2", "p1"));
+        Assert.Contains("UNIQUE", ex.ToString());
+
+        context.Database.ExecuteSqlRaw(insertTask, "t3", "p2");
+    }
+
+    [Fact]
     public void Down_RemovesTriggersAndTables()
     {
         using var factory = CreateFactory("Production", true);
@@ -141,7 +177,7 @@ public class MigrationTests : IDisposable
 
         Assert.Empty(GetObjectNames(context, "trigger"));
         var tables = GetObjectNames(context, "table");
-        foreach (var table in Tables)
+        foreach (var table in Tables.Append("Reviews"))
             Assert.DoesNotContain(table, tables);
     }
 
